@@ -1,4 +1,10 @@
 apply plugin: "com.android.application"
+
+// React Native Vector Icons - include icon fonts
+project.ext.vectoricons = [
+    iconFontNames: [ 'Ionicons.ttf' ]
+]
+apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
