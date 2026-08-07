@@ -21,6 +21,8 @@ const ICON_MAP: Record<string, string> = {
   // Bottom Tabs Navigation
   'home': '🏠',
   'home-outline': '🏠',
+  'heart': '❤️',
+  'heart-outline': '🤍',
   'person': '👤',
   'person-outline': '👤',
 

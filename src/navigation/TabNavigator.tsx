@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainTabParamList } from '../types';
 import { HomeScreen } from '../screens/HomeScreen';
+import { FavoritesScreen } from '../screens/FavoritesScreen';
+import { CartScreen } from '../screens/CartScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { lightColors, darkColors } from '../constants/colors';
 import { Icon } from '../components/Icon';
@@ -12,11 +14,13 @@ import { useApp } from '../context/AppContext';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const TabNavigator: React.FC = () => {
-  const { isDarkMode } = useApp();
+  const { isDarkMode, getCartItemCount, favorites } = useApp();
   const colors = isDarkMode ? darkColors : lightColors;
   const insets = useSafeAreaInsets();
 
   const tabHeight = 56 + Math.max(insets.bottom, 4);
+  const cartItemCount = getCartItemCount();
+  const favCount = favorites.length;
 
   return (
     <Tab.Navigator
@@ -44,8 +48,19 @@ export const TabNavigator: React.FC = () => {
         },
         tabBarIcon: ({ focused, color }) => {
           let iconName = '';
+          let showBadge = false;
+          let badgeCount = 0;
+
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Favorites') {
+            iconName = focused ? 'heart' : 'heart-outline';
+            showBadge = favCount > 0;
+            badgeCount = favCount;
+          } else if (route.name === 'Cart') {
+            iconName = focused ? 'cart' : 'cart-outline';
+            showBadge = cartItemCount > 0;
+            badgeCount = cartItemCount;
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -62,6 +77,13 @@ export const TabNavigator: React.FC = () => {
                 size={22}
                 color={focused ? colors.primary : colors.textMuted}
               />
+              {showBadge && (
+                <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.badgeText}>
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </Text>
+                </View>
+              )}
             </View>
           );
         },
@@ -71,6 +93,16 @@ export const TabNavigator: React.FC = () => {
         name="Home"
         component={HomeScreen}
         options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{ tabBarLabel: 'Favorites' }}
+      />
+      <Tab.Screen
+        name="Cart"
+        component={CartScreen}
+        options={{ tabBarLabel: 'Cart' }}
       />
       <Tab.Screen
         name="Profile"
@@ -88,5 +120,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

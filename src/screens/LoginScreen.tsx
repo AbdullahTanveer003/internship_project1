@@ -6,6 +6,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
+  Image,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -14,8 +16,10 @@ import { spacing, borderRadius } from '../constants/spacing';
 import { typography } from '../constants/typography';
 import { CustomInput } from '../components/CustomInput';
 import { CustomButton } from '../components/CustomButton';
-import { Icon } from '../components/Icon';
 import { useApp } from '../context/AppContext';
+import api from '../api/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -27,20 +31,18 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { updateProfile, isDarkMode } = useApp();
+  const { updateProfile, isDarkMode, saveAuthToken } = useApp();
   const colors = isDarkMode ? darkColors : lightColors;
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
 
-    if (!email.trim()) {
-      newErrors.email = 'Email address is required';
-    } else if (!email.includes('@')) {
-      newErrors.email = 'Please enter a valid email address';
+    if (!username.trim()) {
+      newErrors.email = 'Username is required';
     }
 
     if (!password.trim()) {
@@ -51,13 +53,58 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = () => {
-    if (validate()) {
-      // Store email into profile state
-      updateProfile({ email: email.trim() });
-      // Navigate to MainApp
+  const handleLogin = async () => {
+    if (!validate()) return;
+
+    try {
+      const response = await api.post('/auth/login', {
+        username,
+        password,
+      });
+
+      // The response contains user data directly
+      const userData = response.data;
+
+      // Store tokens securely using EncryptedStorage via AppContext
+      await saveAuthToken(userData.accessToken, userData.refreshToken);
+      await AsyncStorage.setItem('userData', JSON.stringify(userData));
+
+      // Update profile with all user data including image
+      updateProfile({
+        id: userData.id,
+        name: `${userData.firstName} ${userData.lastName}`,
+        email: userData.email,
+        phone: userData.phone || '',
+        address: userData.address?.address || '',
+        profileImage: userData.image || '', 
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        gender: userData.gender,
+        username: userData.username,
+        token: userData.accessToken,
+        refreshToken: userData.refreshToken,
+      });
+
       navigation.replace('MainApp');
+
+    } catch (error: any) {
+      Alert.alert(
+        "Login Failed",
+        error.response?.data?.message || error.message || "Invalid credentials"
+      );
     }
+  };
+
+  const handleSignUp = () => {
+    navigation.navigate('SignUp');
+  };
+
+  const handleGoogleLogin = () => {
+    Alert.alert('Google Login', 'Google authentication will be implemented here');
+  };
+
+  const handleAppleLogin = () => {
+    Alert.alert('Apple Login', 'Apple authentication will be implemented here');
   };
 
   return (
@@ -68,12 +115,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header Branding */}
+        {/* Header Branding with Logo */}
         <View style={styles.header}>
-          <View style={[styles.logoBadge, { backgroundColor: colors.primary }]}>
-            <Icon name="bag-handle" size={38} color="#FFFFFF" />
-          </View>
+          <Image
+            source={require('../../assets/images/logo1.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={[styles.welcomeTitle, { color: colors.text }]}>
             Welcome Back!
           </Text>
@@ -94,14 +144,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           ]}
         >
           <CustomInput
-            label="Email Address"
-            placeholder="e.g. user@example.com"
-            value={email}
+            label="Username"
+            placeholder="Enter your username"
+            value={username}
             onChangeText={(text) => {
-              setEmail(text);
-              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              setUsername(text);
+              if (errors.email) {
+                setErrors((prev) => ({ ...prev, email: undefined }));
+              }
             }}
-            keyboardType="email-address"
             autoCapitalize="none"
             error={errors.email}
           />
@@ -123,9 +174,69 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             onPress={handleLogin}
             style={styles.signInButton}
           />
+
+          {/* Sign Up Section */}
+          <View style={styles.signUpContainer}>
+            <Text style={[styles.signUpText, { color: colors.textSecondary }]}>
+              Don't have an account?
+            </Text>
+            <TouchableOpacity onPress={handleSignUp}>
+              <Text style={[styles.signUpLink, { color: colors.primary }]}>
+                Sign Up
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Divider with OR text */}
+          <View style={styles.dividerContainer}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
+              OR
+            </Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          {/* Social Login Buttons with Icons */}
+          <TouchableOpacity
+            style={[
+              styles.socialButton,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+            onPress={handleGoogleLogin}
+          >
+            <Image
+              source={require('../../assets/images/google-icon.png')}
+              style={styles.socialIcon}
+              resizeMode="contain"
+            />
+            <Text style={[styles.socialButtonText, { color: colors.text }]}>
+              Continue with Google
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.socialButton,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+            onPress={handleAppleLogin}
+          >
+            <Image
+              source={require('../../assets/images/apple-icon.png')}
+              style={[styles.socialIcon, styles.appleIcon]}
+              resizeMode="contain"
+            />
+            <Text style={[styles.socialButtonText, { color: colors.text }]}>
+              Continue with Apple
+            </Text>
+          </TouchableOpacity>
         </View>
-
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -139,34 +250,32 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: spacing.lg,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  logoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: borderRadius.round,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: spacing.md,
-    elevation: 4,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    width: '100%',
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    borderRadius: 20,
+    marginBottom: spacing.xs,
   },
   welcomeTitle: {
     ...typography.headerTitle,
     fontSize: 26,
     marginBottom: spacing.xs,
+    textAlign: 'center',
   },
   welcomeSubtitle: {
     ...typography.bodyText,
     textAlign: 'center',
   },
   card: {
+    width: '100%',
+    maxWidth: 400,
     padding: spacing.lg,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
@@ -178,9 +287,59 @@ const styles = StyleSheet.create({
   signInButton: {
     marginTop: spacing.sm,
   },
-  demoNote: {
-    ...typography.caption,
-    textAlign: 'center',
-    marginTop: spacing.lg,
+  signUpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  signUpText: {
+    ...typography.bodyText,
+  },
+  signUpLink: {
+    ...typography.bodyText,
+    fontWeight: '600',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    ...typography.bodyText,
+    fontSize: 12,
+    fontWeight: '500',
+    paddingHorizontal: spacing.sm,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  socialIcon: {
+    width: 24,
+    height: 24,
+  },
+  appleIcon: {
+    width: 24,
+    height: 24,
+  },
+  socialButtonText: {
+    ...typography.bodyText,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

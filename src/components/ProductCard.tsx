@@ -13,6 +13,7 @@ import { spacing, borderRadius } from '../constants/spacing';
 import { typography } from '../constants/typography';
 import { Icon } from './Icon';
 import { useApp } from '../context/AppContext';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface ProductCardProps {
   product: Product;
@@ -20,12 +21,18 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
-  const { isDarkMode, addToCart } = useApp();
+  const { isDarkMode, addToCart, toggleFavorite, isFavorite } = useApp();
   const colors = isDarkMode ? darkColors : lightColors;
+  const isFav = isFavorite(String(product.id));
 
   const handleQuickAdd = (e: any) => {
     e.stopPropagation();
     addToCart(product);
+  };
+
+  const handleFavoriteToggle = (e: any) => {
+    e.stopPropagation();
+    toggleFavorite(product);
   };
 
   return (
@@ -53,6 +60,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
             <Text style={styles.ratingText}>{product.rating}</Text>
           </View>
         ) : null}
+
+        <TouchableOpacity
+          style={styles.favButton}
+          onPress={handleFavoriteToggle}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name={isFav ? "heart" : "heart-outline"}
+            size={18}
+            color={isFav ? "#EF4444" : "#6B7280"}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.infoContainer}>
@@ -117,7 +136,7 @@ const styles = StyleSheet.create({
   ratingBadge: {
     position: 'absolute',
     top: spacing.xs + 2,
-    right: spacing.xs + 2,
+    left: spacing.xs + 2,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 6,
@@ -129,6 +148,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginLeft: 3,
+  },
+  favButton: {
+    position: 'absolute',
+    top: spacing.xs + 2,
+    right: spacing.xs + 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
   },
   infoContainer: {
     padding: spacing.sm + 2,
