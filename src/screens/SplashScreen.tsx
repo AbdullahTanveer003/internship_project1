@@ -4,14 +4,14 @@ import {
   Text,
   StyleSheet,
   Animated,
-  useColorScheme,
+  Image,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { lightColors, darkColors } from '../constants/colors';
-import { typography } from '../constants/typography';
-import { Icon } from '../components/Icon';
-import { borderRadius, spacing } from '../constants/spacing';
+import { spacing } from '../constants/spacing';
+import { useApp } from '../context/AppContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type SplashScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -23,13 +23,17 @@ interface SplashScreenProps {
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ navigation }) => {
-  const isDark = useColorScheme() === 'dark';
-  const colors = isDark ? darkColors : lightColors;
+  const { isDarkMode, getAuthToken, updateProfile } = useApp();
+  const colors = isDarkMode ? darkColors : lightColors;
 
+  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const textFadeAnim = useRef(new Animated.Value(0)).current;
+  const textTranslateYAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
+    // Logo animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -38,39 +42,97 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ navigation }) => {
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 5,
-        tension: 40,
+        friction: 3,
+        tension: 30,
         useNativeDriver: true,
       }),
     ]).start();
 
-    const timer = setTimeout(() => {
-      navigation.replace('Login');
-    }, 2200);
+    // Text animation (delayed)
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(textFadeAnim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.spring(textTranslateYAnim, {
+          toValue: 0,
+          friction: 4,
+          tension: 30,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 300);
 
-    return () => clearTimeout(timer);
-  }, [fadeAnim, scaleAnim, navigation]);
+    // Check authentication token from Secure EncryptedStorage
+    const checkAuth = async () => {
+      try {
+        const token = await getAuthToken();
+        const storedUserData = await AsyncStorage.getItem('userData');
+        
+        if (token && storedUserData) {
+          const userData = JSON.parse(storedUserData);
+          updateProfile({
+            id: userData.id,
+            name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.username || 'User',
+            email: userData.email,
+            phone: userData.phone || '',
+            address: userData.address?.address || userData.address || '',
+            profileImage: userData.image || '',
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            gender: userData.gender,
+            username: userData.username,
+            token,
+          });
+          
+          setTimeout(() => {
+            navigation.replace('MainApp');
+          }, 1800);
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking auth state on splash screen:', err);
+      }
+
+      setTimeout(() => {
+        navigation.replace('Login');
+      }, 1800);
+    };
+
+    checkAuth();
+  }, [fadeAnim, scaleAnim, textFadeAnim, textTranslateYAnim, navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
-        <View style={[styles.logoContainer, { backgroundColor: colors.primary }]}>
-          <Icon name="bag-handle" size={54} color="#FFFFFF" />
-        </View>
+      <View style={styles.content}>
+        {/* Logo Image - Simple, no container */}
+        <Animated.Image
+          source={require('../../assets/images/logo1.png')}
+          style={[
+            styles.logo,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+          resizeMode="contain"
+        />
 
-        <Text style={[styles.appName, { color: colors.text }]}>ShopVibe</Text>
-        <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-          Your Modern Shopping Experience
-        </Text>
-      </Animated.View>
+        {/* App Name with animation */}
+        <Animated.View
+          style={{
+            opacity: textFadeAnim,
+            transform: [{ translateY: textTranslateYAnim }],
+          }}
+        >
+          <Text style={[styles.appName, { color: colors.text }]}>ElectroMart</Text>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+            Your Premium Electronics Store
+          </Text>
+        </Animated.View>
+      </View>
     </View>
   );
 };
@@ -84,27 +146,21 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 150,
+    height: 150,
     marginBottom: spacing.md,
-    elevation: 8,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
   },
   appName: {
-    ...typography.headerTitle,
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '800',
     letterSpacing: 0.5,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   tagline: {
-    ...typography.bodyText,
-    marginTop: spacing.xs,
+    fontSize: 14,
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
 });
