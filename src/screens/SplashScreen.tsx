@@ -74,16 +74,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ navigation }) => {
         if (token && storedUserData) {
           const userData = JSON.parse(storedUserData);
           updateProfile({
-            id: userData.id,
-            name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.username || 'User',
-            email: userData.email,
-            phone: userData.phone || '',
-            address: userData.address?.address || userData.address || '',
-            profileImage: userData.image || '',
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            gender: userData.gender,
-            username: userData.username,
+            ...userData,
             token,
           });
           

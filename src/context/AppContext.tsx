@@ -3,6 +3,7 @@ import { useColorScheme as useDeviceColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import EncryptedStorage from 'react-native-encrypted-storage';
 import { Product, CartItem, UserProfile } from '../types';
+import { authService } from '../services/authService';
 
 interface AppContextType {
   user: UserProfile;
@@ -90,10 +91,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateProfile = (updatedFields: Partial<UserProfile>) => {
-    setUser((prev) => ({
-      ...prev,
-      ...updatedFields,
-    }));
+    setUser((prev) => {
+      const nextUser = {
+        ...prev,
+        ...updatedFields,
+      };
+      authService.updateUserProfile(nextUser).catch((err) =>
+        console.error('Error persisting profile update:', err)
+      );
+      return nextUser;
+    });
   };
 
   const addToCart = (product: Product) => {
@@ -222,12 +229,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Logout method
   const logout = async () => {
     try {
-      // Clear secure storage
+      await authService.logout();
       await clearAuthToken();
-      
-      // Clear async storage items
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('userData');
       await AsyncStorage.removeItem('cart');
 

@@ -36,7 +36,7 @@ interface HomeScreenProps {
   navigation: HomeScreenNavigationProp;
 }
 
-const CATEGORIES = ['All', 'beauty', 'fragrances', 'furniture', 'groceries'];
+const CATEGORIES = ['All', 'Electronics', 'Footwear', 'Accessories'];
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, isDarkMode } = useApp();

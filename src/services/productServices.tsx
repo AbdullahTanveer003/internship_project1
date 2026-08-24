@@ -1,70 +1,52 @@
-import api from '../api/api';
 import { Product } from '../types';
-
-// Transform DummyJSON product to our Product type
-const transformProduct = (dummyProduct: any): Product => ({
-  id: String(dummyProduct.id),
-  name: dummyProduct.title,
-  price: dummyProduct.price,
-  description: dummyProduct.description,
-  image: { uri: dummyProduct.thumbnail },
-  category: dummyProduct.category,
-  rating: dummyProduct.rating,
-});
+import { DUMMY_PRODUCTS } from '../data/products';
 
 export const productService = {
-  // Fetch all products
+  // Fetch all products from local dummy data
   getAllProducts: async (): Promise<Product[]> => {
-    try {
-      const response = await api.get('/products');
-      return response.data.products.map(transformProduct);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      throw error;
-    }
+    return Promise.resolve(DUMMY_PRODUCTS);
   },
 
-  // Fetch a single product by ID
+  // Fetch a single product by ID from local dummy data
   getProductById: async (id: string): Promise<Product> => {
-    try {
-      const response = await api.get(`/products/${id}`);
-      return transformProduct(response.data);
-    } catch (error) {
-      console.error('Error fetching product:', error);
-      throw error;
+    const product = DUMMY_PRODUCTS.find((p) => String(p.id) === String(id));
+    if (!product) {
+      return Promise.resolve(DUMMY_PRODUCTS[0]);
     }
+    return Promise.resolve(product);
   },
 
-  // Fetch products by category
+  // Fetch products by category from local dummy data
   getProductsByCategory: async (category: string): Promise<Product[]> => {
-    try {
-      const response = await api.get(`/products/category/${category}`);
-      return response.data.products.map(transformProduct);
-    } catch (error) {
-      console.error('Error fetching products by category:', error);
-      throw error;
+    if (!category || category.toLowerCase() === 'all') {
+      return Promise.resolve(DUMMY_PRODUCTS);
     }
+    const filtered = DUMMY_PRODUCTS.filter(
+      (p) => p.category?.toLowerCase() === category.toLowerCase()
+    );
+    return Promise.resolve(filtered);
   },
 
-  // Search products
+  // Search products in local dummy data
   searchProducts: async (query: string): Promise<Product[]> => {
-    try {
-      const response = await api.get(`/products/search?q=${query}`);
-      return response.data.products.map(transformProduct);
-    } catch (error) {
-      console.error('Error searching products:', error);
-      throw error;
-    }
+    const q = query.toLowerCase();
+    const filtered = DUMMY_PRODUCTS.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q)
+    );
+    return Promise.resolve(filtered);
   },
 
-  // Get all categories
+  // Get all categories dynamically from local dummy data
   getCategories: async (): Promise<string[]> => {
-    try {
-      const response = await api.get('/products/categories');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      throw error;
-    }
+    const categoriesSet = new Set<string>();
+    DUMMY_PRODUCTS.forEach((p) => {
+      if (p.category) {
+        categoriesSet.add(p.category);
+      }
+    });
+    return Promise.resolve(['All', ...Array.from(categoriesSet)]);
   },
 };

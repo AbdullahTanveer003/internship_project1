@@ -1,18 +1,17 @@
-import axios from 'axios';
+// Mock API module - Network requests removed completely for local storage operation
 
-const api = axios.create({
-  baseURL: 'https://dummyjson.com',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add product-specific API methods
 export const productApi = {
-  getProducts: () => api.get('/products'),
-  getProduct: (id: string) => api.get(`/products/${id}`),
-  getProductsByCategory: (category: string) => api.get(`/products/category/${category}`),
-  searchProducts: (query: string) => api.get(`/products/search?q=${query}`),
+  getProducts: async () => ({ data: { products: [] } }),
+  getProduct: async () => ({ data: {} }),
+  getProductsByCategory: async () => ({ data: { products: [] } }),
+  searchProducts: async () => ({ data: { products: [] } }),
+};
+
+const api = {
+  get: async () => ({ data: {} }),
+  post: async () => ({ data: {} }),
+  put: async () => ({ data: {} }),
+  delete: async () => ({ data: {} }),
 };
 
 export default api;

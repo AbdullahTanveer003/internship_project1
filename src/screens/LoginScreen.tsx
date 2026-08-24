@@ -17,8 +17,7 @@ import { typography } from '../constants/typography';
 import { CustomInput } from '../components/CustomInput';
 import { CustomButton } from '../components/CustomButton';
 import { useApp } from '../context/AppContext';
-import api from '../api/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../services/authService';
 import { Alert } from 'react-native';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
@@ -57,40 +56,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     if (!validate()) return;
 
     try {
-      const response = await api.post('/auth/login', {
-        username,
-        password,
-      });
+      const { user, token } = await authService.loginUser(username, password);
 
-      // The response contains user data directly
-      const userData = response.data;
+      // Store auth token
+      if (token) {
+        await saveAuthToken(token);
+      }
 
-      // Store tokens securely using EncryptedStorage via AppContext
-      await saveAuthToken(userData.accessToken, userData.refreshToken);
-      await AsyncStorage.setItem('userData', JSON.stringify(userData));
-
-      // Update profile with all user data including image
-      updateProfile({
-        id: userData.id,
-        name: `${userData.firstName} ${userData.lastName}`,
-        email: userData.email,
-        phone: userData.phone || '',
-        address: userData.address?.address || '',
-        profileImage: userData.image || '', 
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        gender: userData.gender,
-        username: userData.username,
-        token: userData.accessToken,
-        refreshToken: userData.refreshToken,
-      });
+      // Update profile with user data
+      updateProfile(user);
 
       navigation.replace('MainApp');
 
     } catch (error: any) {
       Alert.alert(
         "Login Failed",
-        error.response?.data?.message || error.message || "Invalid credentials"
+        error.message || "Invalid username or password"
       );
     }
   };
